@@ -1,6 +1,9 @@
-import { SITE_DESCRIPTION, SITE_NAME, SITE_TITLE, SITE_URL } from "@/lib/site";
+import { HOME_FAQS } from "@/lib/faq";
+import { SITE_DESCRIPTION, SITE_NAME, SITE_URL } from "@/lib/site";
 
-const jsonLd = {
+const OG_IMAGE = `${SITE_URL}/opengraph-image`;
+
+const homeJsonLd = {
   "@context": "https://schema.org",
   "@graph": [
     {
@@ -10,7 +13,7 @@ const jsonLd = {
       name: SITE_NAME,
       description: SITE_DESCRIPTION,
       inLanguage: "en",
-      image: `${SITE_URL}/logo.svg`,
+      image: OG_IMAGE,
     },
     {
       "@type": "WebApplication",
@@ -21,44 +24,44 @@ const jsonLd = {
       applicationCategory: "MultimediaApplication",
       operatingSystem: "Any",
       browserRequirements: "Requires a modern web browser with WebAssembly",
-      image: `${SITE_URL}/logo.svg`,
+      image: OG_IMAGE,
+      isAccessibleForFree: true,
       offers: {
         "@type": "Offer",
         price: "0",
         priceCurrency: "USD",
       },
       featureList: [
-        "Download YouTube videos",
-        "Convert videos to MP4",
-        "Convert clips to GIF",
-        "Trim start and end times in the browser",
+        "Clip a moment from a YouTube video",
+        "Save as MP4 with audio",
+        "Convert a short range to GIF",
+        "Trim start and end in the browser",
+        "No account or watermark",
       ],
       isPartOf: { "@id": `${SITE_URL}/#website` },
     },
     {
-      "@type": "SoftwareApplication",
-      "@id": `${SITE_URL}/#software`,
-      name: SITE_TITLE,
-      applicationCategory: "MultimediaApplication",
-      operatingSystem: "Web",
+      "@type": "FAQPage",
+      "@id": `${SITE_URL}/#faq`,
       url: SITE_URL,
-      description: SITE_DESCRIPTION,
-      image: `${SITE_URL}/logo.svg`,
-      offers: {
-        "@type": "Offer",
-        price: "0",
-        priceCurrency: "USD",
-      },
+      mainEntity: HOME_FAQS.map((faq) => ({
+        "@type": "Question",
+        name: faq.question,
+        acceptedAnswer: {
+          "@type": "Answer",
+          text: faq.answer,
+        },
+      })),
     },
   ],
 };
 
-export function JsonLd() {
+export function JsonLd({ data = homeJsonLd }: { data?: unknown }) {
   return (
     <script
       type="application/ld+json"
       dangerouslySetInnerHTML={{
-        __html: JSON.stringify(jsonLd).replace(/</g, "\\u003c"),
+        __html: JSON.stringify(data).replace(/</g, "\\u003c"),
       }}
     />
   );
