@@ -3,6 +3,7 @@ import {
   assertYouTubeUrl,
   getDownloadStream,
   toYoutubeError,
+  urlFromBody,
 } from "@/lib/youtube";
 import { sanitizeFilename } from "@/lib/format";
 
@@ -12,8 +13,8 @@ export const maxDuration = 300;
 
 export async function POST(request: NextRequest) {
   try {
-    const body = await request.json();
-    const url = assertYouTubeUrl(body.url);
+    const body: unknown = await request.json();
+    const url = assertYouTubeUrl(urlFromBody(body));
     const { stream, title } = await getDownloadStream(url);
     const filename = `${sanitizeFilename(title)}.mp4`;
 
