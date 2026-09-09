@@ -1,7 +1,9 @@
 import "server-only";
 
-import { Innertube, type Types } from "youtubei.js";
+import { Innertube, Log, type Types } from "youtubei.js";
 import type { VideoInfo } from "@/lib/types";
+
+Log.setLevel(Log.Level.NONE);
 
 const VIDEO_ID_RE = /^[\w-]{11}$/;
 const DOWNLOAD_CLIENTS: Types.InnerTubeClient[] = [
@@ -74,20 +76,22 @@ export async function getVideoInfo(url: string): Promise<VideoInfo> {
   }
 
   const yt = await getClient();
-  const info = await yt.getBasicInfo(videoId);
-  const { basic_info: details } = info;
-  const thumbnail =
-    [...(details.thumbnail ?? [])].sort((a, b) => b.width - a.width)[0]?.url ??
-    `https://i.ytimg.com/vi/${details.id ?? videoId}/hqdefault.jpg`;
+  let lastError: unknown;
 
-  return {
-    title: details.title ?? "YouTube video",
-    author: details.author ?? details.channel?.name ?? "Unknown",
-    durationSeconds: Number(details.duration) || 0,
-    thumbnailUrl: thumbnail.replace(/^http:\/\//, "https://"),
-    videoId: details.id ?? videoId,
-    viewCount: Number(details.view_count) || 0,
-  };
+  for (const client of DOWNLOAD_CLIENTS) {
+    try {
+      const info = await yt.getBasicInfo(videoId, { client });
+      const mapped = mapVideoInfo(info, videoId);
+      if (mapped) return mapped;
+    } catch (error) {
+      lastError = error;
+    }
+  }
+
+  throw (
+    lastError ??
+    new YoutubeError("Could not load that video from YouTube right now.", 502)
+  );
 }
 
 export async function getDownloadStream(url: string) {
@@ -111,6 +115,28 @@ export async function getDownloadStream(url: string) {
   }
 
   throw lastError ?? new YoutubeError("Could not download this video.", 502);
+}
+
+function mapVideoInfo(
+  info: Awaited<ReturnType<Innertube["getBasicInfo"]>>,
+  videoId: string,
+): VideoInfo | null {
+  const details = info.basic_info;
+  if (!details.title) return null;
+
+  const thumbnails = Array.isArray(details.thumbnail) ? details.thumbnail : [];
+  const thumbnail =
+    [...thumbnails].sort((a, b) => (b.width ?? 0) - (a.width ?? 0))[0]?.url ??
+    `https://i.ytimg.com/vi/${details.id ?? videoId}/hqdefault.jpg`;
+
+  return {
+    title: details.title,
+    author: details.author ?? details.channel?.name ?? "Unknown",
+    durationSeconds: Number(details.duration) || 0,
+    thumbnailUrl: thumbnail.replace(/^http:\/\//, "https://"),
+    videoId: details.id ?? videoId,
+    viewCount: Number(details.view_count) || 0,
+  };
 }
 
 async function downloadBestMp4(info: Awaited<ReturnType<Innertube["getBasicInfo"]>>) {
@@ -147,7 +173,7 @@ export function toYoutubeError(error: unknown) {
 
   const message = error instanceof Error ? error.message : "Could not reach YouTube.";
   if (
-    /matching formats|valid URL to decipher|streaming data|unplayable|login required|403|unavailable/i.test(
+    /matching formats|valid URL to decipher|streaming data|unplayable|login required|403|unavailable|interstitial/i.test(
       message,
     )
   ) {

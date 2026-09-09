@@ -3,6 +3,11 @@ import { existsSync } from "node:fs";
 import { getVideoDurationInSeconds } from "get-video-duration";
 import { loadVideo, outputPath } from "./helpers";
 
+test.skip(
+  Boolean(process.env.CI),
+  "YouTube serves bot interstitials to GitHub-hosted runners",
+);
+
 test("downloads a full MP4", async ({ page }) => {
   await loadVideo(page);
 
