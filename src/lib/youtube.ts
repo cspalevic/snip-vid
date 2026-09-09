@@ -59,6 +59,14 @@ export function assertYouTubeUrl(url: unknown): string {
   return trimmed;
 }
 
+export function urlFromBody(body: unknown): unknown {
+  if (typeof body === "object" && body !== null && "url" in body) {
+    return body.url;
+  }
+
+  return undefined;
+}
+
 export async function getVideoInfo(url: string): Promise<VideoInfo> {
   const videoId = extractVideoId(url);
   if (!videoId) {

@@ -135,9 +135,9 @@ export function SnipStudio() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ url: url.trim() }),
       });
-      const data = await response.json();
+      const data: unknown = await response.json();
       if (!response.ok) {
-        throw new Error(data.error ?? "Could not load that video.");
+        throw new Error(apiErrorMessage(data, "Could not load that video."));
       }
       setInfo(data as VideoInfo);
       setJob("idle");
@@ -549,8 +549,8 @@ async function downloadVideoBytes(
 
   const contentType = response.headers.get("content-type") ?? "";
   if (!response.ok || contentType.includes("application/json")) {
-    const data = await response.json().catch(() => null);
-    throw new Error(data?.error ?? "Could not download this video.");
+    const data: unknown = await response.json().catch(() => null);
+    throw new Error(apiErrorMessage(data, "Could not download this video."));
   }
 
   if (!response.body) {
@@ -583,7 +583,20 @@ function triggerDownload(href: string, filename: string) {
   const anchor = document.createElement("a");
   anchor.href = href;
   anchor.download = filename;
-  document.body.append(anchor);
+  document.body.appendChild(anchor);
   anchor.click();
   anchor.remove();
+}
+
+function apiErrorMessage(data: unknown, fallback: string) {
+  if (
+    typeof data === "object" &&
+    data !== null &&
+    "error" in data &&
+    typeof data.error === "string"
+  ) {
+    return data.error;
+  }
+
+  return fallback;
 }
